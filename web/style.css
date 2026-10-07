@@ -683,6 +683,10 @@ footer {
 .register-list-body p { margin: 0; }
 .register-entry { border-left: 1px solid #dce3df; padding-left: 1mm; margin-left: 2mm; }
 
+.deceased-controls { flex-wrap: nowrap; gap: 6px; }
+.deceased-controls button { margin: 0; }
+@media (max-width: 680px) { .deceased-controls { flex-wrap: wrap; } }
+
 .memorial-body {
   font-size: 18px;
   line-height: 1.6;
