@@ -14,12 +14,28 @@ function kanjiNumber(value) {
   const number = Number(value);
   if (number < 10) return digits[number];
   if (number < 100) return `${number < 20 ? '' : digits[Math.floor(number / 10)]}十${number % 10 ? digits[number % 10] : ''}`;
+  if (number < 1000) return `${number < 200 ? '' : digits[Math.floor(number / 100)]}百${number % 100 ? kanjiNumber(number % 100) : ''}`;
   return String(number).replace(/\d/g, digit => digits[Number(digit)]);
 }
 function printDate(value) {
   if (!value) return '未登録';
   const [year, month, day] = value.split('-');
   return `${year.replace(/\d/g, digit => '〇一二三四五六七八九'[Number(digit)])}年${kanjiNumber(month)}月${kanjiNumber(day)}日`;
+}
+function japaneseDate(value) {
+  if (!value) return '未登録';
+  const date = new Date(`${value}T00:00:00Z`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== value) return '未登録';
+  // Before the first day of Meiji, retain the recorded Gregorian date.
+  if (value < '1868-09-08') return printDate(value);
+  const parts = new Intl.DateTimeFormat('ja-JP-u-ca-japanese', {era: 'long', year: 'numeric', month: 'numeric', day: 'numeric', timeZone: 'UTC'}).formatToParts(date);
+  const part = type => parts.find(entry => entry.type === type)?.value;
+  return `${part('era')}${part('year') === '元' || part('year') === '1' ? '元' : kanjiNumber(part('year'))}年${kanjiNumber(part('month'))}月${kanjiNumber(part('day'))}日`;
+}
+function memorialPrintDate(value) {
+  const date = new Date(`${value}T00:00:00Z`);
+  if (!value || !Number.isFinite(date.getTime())) return '未登録';
+  return `${kanjiNumber(value.slice(5, 7))}月${kanjiNumber(value.slice(8, 10))}日（${'日月火水木金土'[date.getUTCDay()]}）`;
 }
 function normalisePostal(value) {
   const text = value.normalize('NFKC').trim().replace(/^〒\s*/, '');
@@ -70,6 +86,12 @@ if (typeof document === 'undefined') {
   check(monthDays('2024-02') === 29 && monthDays('2026-02') === 28);
   check(printDate('2024-03-05') === '二〇二四年三月五日');
   check(printDate('2026-12-31') === '二〇二六年十二月三十一日');
+  check(japaneseDate('2019-04-30') === '平成三十一年四月三十日');
+  check(japaneseDate('2019-05-01') === '令和元年五月一日');
+  check(japaneseDate('1867-01-01') === '一八六七年一月一日');
+  check(japaneseDate('') === '未登録' && japaneseDate('2026-02-30') === '未登録');
+  check(memorialPrintDate('2026-10-07') === '十月七日（水）');
+  check(kanjiNumber('150') === '百五十' && kanjiNumber('0') === '〇');
   check(normalisePostal('０６０－０００１') === '0600001');
   check(normalisePostal('12345678') === null);
   check(parseRokuyoCsv('\uFEFFdate,rokuyo\r\n2026-01-01,大安\r\n')[0].label === '大安');
@@ -93,6 +115,7 @@ if (typeof document === 'undefined') {
   let loadVersion = 0;
   let loading = false;
   let deceasedBusy = false;
+  let templeDirty = false, templeBusy = false;
   let postalVersion = 0, postalTimer, postalAbort, pendingPostal, lastAutoAddress;
   const titles = {household: '檀家', deceased: '故人', event: '予定'};
   const collections = {household: 'households', deceased: 'deceased', event: 'events'};
@@ -147,15 +170,15 @@ if (typeof document === 'undefined') {
   function deceasedControls(item) {
     const controls = node('div', undefined, 'deceased-controls');
     const print = deceasedAction('印刷', () => previewDeceased(item));
-    print.setAttribute('aria-label', `${item.name}の戒名を印刷`);
+    print.setAttribute('aria-label', `${item.name}の中陰表を印刷`);
     controls.append(deceasedAction('編集', () => edit('deceased', item)), deceasedAction('七日参り', () => showMemorial(item)), deceasedAction('削除', () => deleteDeceased(item)), print);
     return controls;
   }
   async function previewDeceased(item) {
     if (deceasedBusy || loading || reportBusy) return;
-    switchTab('reports'); $('report-type').value = 'kaimyo'; $('report-deceased').value = String(item.id);
+    switchTab('reports'); $('report-type').value = 'chuin'; $('report-deceased').value = String(item.id);
     invalidateReport(); await prepareReport();
-    if (reportReady && $('report-type').value === 'kaimyo' && $('report-deceased').value === String(item.id)) { $('report-preview').scrollIntoView({block: 'start'}); await printReport(); }
+    if (reportReady && $('report-type').value === 'chuin' && $('report-deceased').value === String(item.id)) { $('report-preview').scrollIntoView({block: 'start'}); await printReport(); }
   }
   async function deleteDeceased(item) {
     if (deceasedBusy || loading) return;
@@ -334,6 +357,11 @@ if (typeof document === 'undefined') {
     if (!items.length) list.append(node('p', 'この月の予定はありません。'));
   }
   function invalidateReport() { reportReady = false; $('print-report').disabled = true; $('report-preview').replaceChildren(); $('print-area').replaceChildren(); $('report-warning').textContent = ''; }
+  function renderTemple() {
+    if (templeDirty || templeBusy) return;
+    const form = $('temple-form');
+    for (const element of form.elements) if (element.name) element.value = state.temple?.[element.name] ?? '';
+  }
   async function load() {
     const version = ++loadVersion;
     loading = true; invalidateReport(); $('preview-report').disabled = true;
@@ -350,7 +378,7 @@ if (typeof document === 'undefined') {
       } catch { invalid.push(item.name); }
     }
     ++loadVersion; loading = false; $('preview-report').disabled = false;
-    renderDeceasedYears(); renderHouseholds(); renderDeceased(); renderRules();
+    renderDeceasedYears(); renderHouseholds(); renderDeceased(); renderRules(); renderTemple();
     fillSelect($('deceased-form').elements.household_id, state.households, state.households.length ? '檀家を選択' : '先に檀家を登録してください', item => item.name);
     fillSelect($('report-deceased'), state.deceased, '故人を選択', item => `${item.name}（${householdName(item.household_id)}）`);
     $('memorial-detail').hidden = true; renderCalendar(); invalidateReport();
@@ -372,6 +400,32 @@ if (typeof document === 'undefined') {
       finally { submit.disabled = false; if (kind === 'deceased') setDeceasedBusy(false); }
     });
   }
+  $('temple-form').addEventListener('input', () => { templeDirty = true; });
+  $('temple-reload').addEventListener('click', async () => {
+    if (templeBusy) return;
+    if (templeDirty && !window.confirm('入力中の寺院情報を破棄して、保存済みの情報を読み込みますか？')) return;
+    clearError();
+    try { await load(); templeDirty = false; renderTemple(); } catch (error) { showError(error); }
+  });
+  $('temple-form').addEventListener('submit', async event => {
+    event.preventDefault(); if (templeBusy || loading) return;
+    const form = event.currentTarget;
+    const data = Object.fromEntries(new FormData(form)); data.version = Number(data.version);
+    templeBusy = true; clearError(); invalidateReport();
+    for (const element of form.elements) element.disabled = true;
+    let saved = false;
+    try {
+      state.temple = await api('/api/temple', 'PUT', data); saved = true; templeDirty = false;
+      await load(); $('status').textContent = '寺院情報を保存しました。';
+    } catch (error) {
+      if (saved) error.message = `保存は完了しましたが、表示更新に失敗しました。${error.message}`;
+      else if (error.status === 409) error.message = '寺院情報が別の画面で更新されています。入力は残しています。「保存済みの情報を読み込む」で最新の内容を確認してから入力し直してください。';
+      showError(error);
+    } finally {
+      templeBusy = false; for (const element of form.elements) element.disabled = false;
+      if (saved) renderTemple();
+    }
+  });
   $('rules-form').addEventListener('submit', async event => {
     event.preventDefault(); clearError(); const submit = event.target.querySelector('[type=submit]'); submit.disabled = true;
     const rules = state.rules.map(rule => ({...rule, offset_days: Number([...$('rule-fields').querySelectorAll('input')].find(input => input.dataset.id === String(rule.id)).value)}));
@@ -435,8 +489,32 @@ if (typeof document === 'undefined') {
     }
     page.append(body); return page;
   }
+  function chuinPage(item, rows) {
+    const page = node('article', undefined, 'report-page chuin-landscape'); page.dataset.personName = item.name;
+    const body = node('div', undefined, 'chuin-body report-check');
+    body.append(node('h2', '中陰表', 'chuin-title report-check'));
+    body.append(node('p', `${japaneseDate(item.death_date)}寂`, 'chuin-death report-check'));
+    body.append(node('p', item.kaimyo || '戒名未登録', 'chuin-kaimyo report-check'));
+    const person = node('div', undefined, 'chuin-person');
+    person.append(node('p', '俗名', 'chuin-label'), node('p', `${item.name}叓`, 'chuin-name report-check'));
+    if (item.age_at_death !== '' && item.age_at_death != null) person.append(node('p', `享年${kanjiNumber(item.age_at_death)}歳`, 'chuin-age report-check'));
+    body.append(person);
+    const days = node('div', undefined, 'chuin-days');
+    for (const row of rows) {
+      const column = node('div', undefined, 'chuin-day report-check');
+      const label = row.id === 'seventh' && row.label === '七七日' ? '満中陰' : row.id === 'hundred' && row.label === '百か日' ? '百か日忌' : row.label;
+      column.append(node('p', label, 'chuin-day-label report-check'), node('p', memorialPrintDate(row.date), 'chuin-day-date report-check'));
+      days.append(column);
+    }
+    body.append(days);
+    const sponsor = node('div', undefined, 'chuin-sponsor');
+    sponsor.append(node('p', '施主', 'chuin-label'), node('p', item.sponsor_name || householdName(item.household_id), 'chuin-sponsor-name report-check')); body.append(sponsor);
+    const temple = node('div', undefined, 'chuin-temple');
+    temple.append(node('p', state.temple?.name || '寺院名未登録', 'chuin-temple-name report-check'), node('p', state.temple?.address || '住所未登録', 'chuin-temple-address report-check'), node('p', `電話　${state.temple?.phone || '未登録'}`, 'chuin-temple-phone report-check'));
+    body.append(temple); page.append(body); return page;
+  }
   async function prepareReport() {
-    if (reportBusy || loading || deceasedBusy) return;
+    if (reportBusy || loading || deceasedBusy || templeBusy) return;
     reportBusy = true; clearError(); invalidateReport(); $('preview-report').disabled = true;
     const version = loadVersion; const type = $('report-type').value; const selected = $('report-deceased').value; const scope = reportScope();
     try {
@@ -450,6 +528,11 @@ if (typeof document === 'undefined') {
       } else {
         if (!item) throw new Error('帳票に表示する故人を選択してください。');
         if (type === 'kaimyo') pages.push(deceasedPage(item, true));
+        else if (type === 'chuin') {
+          const rows = await api(`/api/memorials/${item.id}`);
+          if (version !== loadVersion || scope !== reportScope() || loading || deceasedBusy) return;
+          pages.push(chuinPage(item, rows));
+        }
         else {
           const rows = await api(`/api/memorials/${item.id}`); const page = reportPage('七日参り');
           page.dataset.personName = item.name;
@@ -467,10 +550,10 @@ if (typeof document === 'undefined') {
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       if (version !== loadVersion || scope !== reportScope() || loading || deceasedBusy) { invalidateReport(); return; }
       if (type === 'register-list') reflowRegisterList(pages);
-      const overflowPages = pages.filter(page => page.scrollHeight > page.clientHeight || page.scrollWidth > page.clientWidth || [...page.querySelectorAll('.vertical-body')].some(body => body.scrollHeight > body.clientHeight || body.scrollWidth > body.clientWidth));
+      const overflowPages = pages.filter(page => page.scrollHeight > page.clientHeight || page.scrollWidth > page.clientWidth || [...page.querySelectorAll('.vertical-body, .report-check')].some(body => body.scrollHeight > body.clientHeight || body.scrollWidth > body.clientWidth));
       const overflow = overflowPages.length > 0;
       for (const page of overflowPages) page.classList.add('report-overflow');
-      $('report-warning').textContent = overflow ? `帳票に収まらない文字があります：${overflowPages.map(page => `${pages.indexOf(page) + 1}ページ目（${page.dataset.personName}）`).join('、')}。長い戒名・戒名の意味・備考を確認してください。印刷を停止しています。` : `${pages.length}ページ。欠字・異体字・原本との一致は未確認です。${fontMissing ? '同梱フォントを読み込めず、代替フォントを使用しています。' : ''}`;
+      $('report-warning').textContent = overflow ? `帳票に収まらない文字があります：${overflowPages.map(page => `${pages.indexOf(page) + 1}ページ目（${page.dataset.personName}）`).join('、')}。俗名・戒名・施主・寺院情報・戒名の意味・備考を確認してください。印刷を停止しています。` : `${pages.length}ページ。欠字・異体字・原本との一致は未確認です。${fontMissing ? '同梱フォントを読み込めず、代替フォントを使用しています。' : ''}`;
       reportReady = !overflow; $('print-report').disabled = !reportReady;
     } catch (error) { showError(error); }
     finally { reportBusy = false; $('preview-report').disabled = loading; }
@@ -480,9 +563,9 @@ if (typeof document === 'undefined') {
   $('print-deceased-list').addEventListener('click', () => { if (deceasedBusy || loading || !visibleDeceased().length) return; switchTab('reports'); $('report-type').value = 'register-list'; prepareReport(); });
   $('preview-report').addEventListener('click', prepareReport);
   async function printReport() {
-    if (!reportReady || reportBusy || loading || deceasedBusy) return;
+    if (!reportReady || reportBusy || loading || deceasedBusy || templeBusy) return;
     await document.fonts.ready;
-    if (!reportReady || reportBusy || loading || deceasedBusy) return;
+    if (!reportReady || reportBusy || loading || deceasedBusy || templeBusy) return;
     $('print-area').replaceChildren(...[...$('report-preview').children].map(page => page.cloneNode(true)));
     window.print();
   }

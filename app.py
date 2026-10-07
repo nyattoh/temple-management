@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parent
 FONT_NAME = re.compile(r'noto-serif-jp-[a-z0-9-]+-[0-9a-f]{12}\.woff2')
 FIELDS = {
     'households': ('name', 'kana', 'postal_code', 'address', 'phone', 'notes'),
-    'deceased': ('household_id', 'name', 'kana', 'kaimyo', 'kaimyo_meaning', 'death_date', 'birth_date', 'notes'),
+    'deceased': ('household_id', 'name', 'kana', 'kaimyo', 'kaimyo_meaning', 'age_at_death', 'sponsor_name', 'death_date', 'birth_date', 'notes'),
     'events': ('title', 'date', 'notes'),
 }
 RULES = [('first', '初七日', 6), ('second', '二七日', 13), ('third', '三七日', 20),
@@ -61,6 +61,10 @@ def initialise(path):
           id TEXT PRIMARY KEY, label TEXT NOT NULL, offset_days INTEGER NOT NULL CHECK(offset_days BETWEEN 0 AND 366));
         CREATE TABLE IF NOT EXISTS rokuyo (date TEXT PRIMARY KEY, label TEXT NOT NULL, source TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS id_sequences (name TEXT PRIMARY KEY, last_id INTEGER NOT NULL);
+        CREATE TABLE IF NOT EXISTS temple (
+          id INTEGER PRIMARY KEY CHECK(id=1), name TEXT NOT NULL DEFAULT '',
+          address TEXT NOT NULL DEFAULT '', phone TEXT NOT NULL DEFAULT '', version INTEGER NOT NULL DEFAULT 1);
+        INSERT OR IGNORE INTO temple(id) VALUES(1);
         ''')
         db.executemany('INSERT OR IGNORE INTO rules (id,label,offset_days) VALUES (?,?,?)', RULES)
         for table in (*FIELDS, 'rules'):
@@ -69,8 +73,10 @@ def initialise(path):
                 db.execute(f'ALTER TABLE {table} ADD COLUMN version INTEGER NOT NULL DEFAULT 1')
         if 'postal_code' not in {row['name'] for row in db.execute('PRAGMA table_info(households)')}:
             db.execute("ALTER TABLE households ADD COLUMN postal_code TEXT NOT NULL DEFAULT ''")
-        if 'kaimyo_meaning' not in {row['name'] for row in db.execute('PRAGMA table_info(deceased)')}:
-            db.execute("ALTER TABLE deceased ADD COLUMN kaimyo_meaning TEXT NOT NULL DEFAULT ''")
+        columns = {row['name'] for row in db.execute('PRAGMA table_info(deceased)')}
+        for field in ('kaimyo_meaning', 'age_at_death', 'sponsor_name'):
+            if field not in columns:
+                db.execute(f"ALTER TABLE deceased ADD COLUMN {field} TEXT NOT NULL DEFAULT ''")
         db.execute("INSERT OR IGNORE INTO id_sequences VALUES ('deceased', (SELECT COALESCE(MAX(id), 0) FROM deceased))")
 
 
@@ -100,6 +106,8 @@ def validate_record(table, body):
                 raise InputError('文字数または入力形式が不正です。')
             value = value.strip()
         result[field] = value
+    if result.get('age_at_death') and (not re.fullmatch(r'[0-9]{1,3}', result['age_at_death']) or int(result['age_at_death']) > 150):
+        raise InputError('享年は0〜150の整数で入力してください。')
     if result.get('postal_code'):
         try:
             result['postal_code'] = postal.normalise(result['postal_code'])
@@ -183,6 +191,7 @@ class Handler(BaseHTTPRequestHandler):
                 if path in ('/api/state', '/api/export'):
                     state = {table: [dict(row) for row in db.execute(f'SELECT * FROM {table} ORDER BY {"date" if table == "rokuyo" else "death_date, id" if table == "deceased" else "offset_days, id" if table == "rules" else "id"}')]
                              for table in (*FIELDS, 'rules', 'rokuyo')}
+                    state['temple'] = dict(db.execute('SELECT * FROM temple WHERE id=1').fetchone())
                     return self.reply(200, state)
                 if path.startswith('/api/memorials/'):
                     return self.reply(200, memorials(db, int(path.rsplit('/', 1)[1])))
@@ -217,6 +226,24 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(raw)
             parts = urlsplit(self.path).path.strip('/').split('/')
             with connect(self.server.db_path) as db:
+                if parts == ['api', 'temple'] and self.command == 'PUT':
+                    if not isinstance(body, dict) or set(body) != {'name', 'address', 'phone', 'version'}:
+                        raise InputError('寺院情報の入力項目が不正です。')
+                    version = body['version']
+                    if type(version) is not int or version < 1:
+                        raise InputError('画面を再読込みしてから編集してください。')
+                    values = []
+                    for field, maximum in (('name', 200), ('address', 200), ('phone', 100)):
+                        value = body[field]
+                        if not isinstance(value, str) or len(value) > maximum:
+                            raise InputError('寺院情報の文字数または入力形式が不正です。')
+                        values.append(value.strip())
+                    cursor = db.execute('UPDATE temple SET name=?, address=?, phone=?, version=version+1 WHERE id=1 AND version=?', (*values, version))
+                    if cursor.rowcount != 1:
+                        raise ConflictError()
+                    result = dict(db.execute('SELECT * FROM temple WHERE id=1').fetchone())
+                    db.commit()
+                    return self.reply(200, result)
                 if self.command == 'DELETE':
                     if len(parts) != 3 or parts[:2] != ['api', 'deceased']:
                         return self.reply(405, {'error': '故人の削除だけに対応しています。'})
@@ -274,8 +301,10 @@ class Handler(BaseHTTPRequestHandler):
                     return self.reply(404, {'error': '見つかりません。'})
                 table = parts[1]
                 values = validate_record(table, body)
-                if self.command == 'PUT' and table == 'deceased' and 'kaimyo_meaning' not in body:
-                    values.pop('kaimyo_meaning')
+                if self.command == 'PUT' and table == 'deceased':
+                    for field in ('kaimyo_meaning', 'age_at_death', 'sponsor_name'):
+                        if field not in body:
+                            values.pop(field)
                 if self.command == 'POST' and len(parts) == 2:
                     if table == 'deceased':
                         # Keep IDs unique across deletion so an old tab cannot delete a new person.

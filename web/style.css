@@ -679,6 +679,63 @@ footer {
   line-height: 1.8;
 }
 
+#temple-form {
+  max-width: 760px;
+  padding: 28px 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+#temple .subtext, #deceased-form .subtext { font-size: 20px; }
+.chuin-landscape {
+  page: kaimyo;
+  width: 297mm;
+  height: 210mm;
+}
+.chuin-body {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: flex-start;
+  width: 261mm;
+  height: 174mm;
+  overflow: hidden;
+  font-size: 22px;
+  line-height: 1.5;
+}
+.chuin-body p, .chuin-body h2 {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  margin: 0;
+  overflow: hidden;
+}
+.chuin-body > * { flex-shrink: 0; }
+.chuin-body .chuin-title {
+  width: 11mm;
+  height: 160mm;
+  font-size: 32px !important;
+  line-height: 1.2;
+  text-align: left;
+  letter-spacing: .2em;
+}
+.chuin-death { width: 10mm; height: 158mm; margin-top: 12mm !important; font-size: 22px; }
+.chuin-kaimyo { width: 17mm; height: 162mm; margin-top: 8mm !important; font-size: 34px; letter-spacing: .08em; }
+.chuin-person { width: 21mm; margin-top: 34mm; display: flex; flex-direction: row-reverse; flex-wrap: wrap; }
+.chuin-label { font-size: 20px; width: 7mm; height: 22mm; }
+.chuin-name { font-size: 28px; width: 11mm; height: 89mm; }
+.chuin-age { font-size: 22px; width: 21mm; height: 43mm; margin-top: 6mm !important; }
+.chuin-days { width: 128mm; display: flex; flex-direction: row-reverse; margin-top: 18mm; }
+.chuin-day { width: 16mm; height: 149mm; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; overflow: hidden; }
+.chuin-day-label { width: 9mm; height: 34mm; font-size: 26px; line-height: 1.2; letter-spacing: .12em; }
+.chuin-day-date { width: 9mm; height: 78mm; margin-top: 8mm !important; font-size: 22px; }
+.chuin-sponsor { width: 20mm; display: flex; flex-direction: row-reverse; margin-top: 46mm; }
+.chuin-sponsor-name { width: 12mm; height: 115mm; font-size: 28px; }
+.chuin-temple { width: 50mm; display: flex; flex-direction: row-reverse; margin-top: 27mm; }
+.chuin-temple-name { width: 13mm; height: 141mm; font-size: 28px; }
+.chuin-temple-address { width: 24mm; height: 141mm; font-size: 20px; }
+.chuin-temple-phone { width: 12mm; height: 141mm; font-size: 20px; }
+
 .register-list-body { font-size: 18px; line-height: 1.6; }
 .register-list-body p { margin: 0; }
 .register-entry { border-left: 1px solid #dce3df; padding-left: 1mm; margin-left: 2mm; }

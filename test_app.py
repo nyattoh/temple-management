@@ -59,6 +59,39 @@ class AppTests(unittest.TestCase):
         _, dates = self.request('GET', f"/api/memorials/{person['id']}")
         self.assertEqual(dates[0]['date'], '2025-01-03')
 
+    def test_temple_master_and_conflicts(self):
+        _, state = self.request('GET', '/api/state')
+        self.assertEqual(state['temple'], dict(id=1, name='', address='', phone='', version=1))
+        payload = dict(name='見本寺（架空）', address='架空の住所', phone='000-0000-0000', version=1)
+        status, saved = self.request('PUT', '/api/temple', payload)
+        self.assertEqual(status, 200)
+        self.assertEqual(saved['version'], 2)
+        self.assertEqual(self.request('PUT', '/api/temple', payload)[0], 409)
+        self.assertEqual(self.request('GET', '/api/export')[1]['temple'], saved)
+        for invalid in (dict(payload, version=True), dict(payload, name='あ' * 201), dict(payload, phone=123), dict(payload, extra='x')):
+            self.assertEqual(self.request('PUT', '/api/temple', invalid)[0], 400)
+        self.assertEqual(self.request('PUT', '/api/temple', dict(payload, version=2), Origin='https://external.test')[0], 403)
+        self.assertEqual(self.request('POST', '/api/temple', payload)[0], 404)
+        self.assertEqual(self.request('DELETE', '/api/temple', {'version': 2})[0], 405)
+        self.assertEqual(self.request('GET', '/api/state')[1]['temple'], saved)
+
+    def test_age_sponsor_and_older_client_update(self):
+        payload = dict(name='架空故人', death_date='2026-10-01', age_at_death='89', sponsor_name='架空施主', kaimyo_meaning='架空の意味')
+        status, created = self.request('POST', '/api/deceased', payload)
+        self.assertEqual(status, 200)
+        self.assertEqual(self.request('PUT', f"/api/deceased/{created['id']}", dict(name='架空故人更新', death_date='2026-10-01', version=1))[0], 200)
+        person = self.request('GET', '/api/state')[1]['deceased'][0]
+        self.assertEqual((person['age_at_death'], person['sponsor_name'], person['kaimyo_meaning']), ('89', '架空施主', '架空の意味'))
+        for age in ('151', '-1', '1.5', '八十九', '1e2', 89):
+            self.assertEqual(self.request('POST', '/api/deceased', dict(payload, age_at_death=age))[0], 400)
+        with app.connect(self.db) as db:
+            db.execute('ALTER TABLE deceased DROP COLUMN age_at_death')
+            db.execute('ALTER TABLE deceased DROP COLUMN sponsor_name')
+        app.initialise(self.db)
+        person = self.request('GET', '/api/state')[1]['deceased'][0]
+        self.assertEqual(person['name'], '架空故人更新')
+        self.assertEqual((person['age_at_death'], person['sponsor_name']), ('', ''))
+
     def test_validation_origin_and_private_files(self):
         self.assertEqual(self.request('POST', '/api/deceased', {'name': '試験', 'death_date': '2023-02-29'})[0], 400)
         self.assertEqual(self.request('POST', '/api/deceased', {'name': '試験', 'death_date': '2024-01-01', 'household_id': 999})[0], 400)
