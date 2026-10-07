@@ -645,6 +645,22 @@ footer {
   line-height: 1.6;
 }
 
+.kaimyo-landscape {
+  page: kaimyo;
+  width: 297mm;
+  height: 210mm;
+}
+
+.kaimyo-landscape .vertical-body {
+  width: 261mm;
+  height: 152mm;
+}
+
+.vertical-meaning {
+  font-size: 20px;
+  line-height: 1.8;
+}
+
 .memorial-body {
   font-size: 18px;
   line-height: 1.6;
@@ -786,6 +802,11 @@ footer {
    ========================================================================== */
 @page {
   size: A4 portrait;
+  margin: 0;
+}
+
+@page kaimyo {
+  size: A4 landscape;
   margin: 0;
 }
 

@@ -181,6 +181,37 @@ class AppTests(unittest.TestCase):
         self.assertIn('error', json.loads(response.read()))
         connection.close()
 
+    def test_kaimyo_meaning_is_saved_and_preserved_for_older_clients(self):
+        body = {'name': '架空の意味試験故人', 'death_date': '2026-10-01', 'kaimyo': '架空院釋見本', 'kaimyo_meaning': '穏やかな心を大切にする、架空の説明。\n二行目の説明。'}
+        status, created = self.request('POST', '/api/deceased', body)
+        self.assertEqual(status, 200)
+        _, state = self.request('GET', '/api/state')
+        self.assertEqual(state['deceased'][0]['kaimyo_meaning'], body['kaimyo_meaning'])
+        path = f"/api/deceased/{created['id']}"
+        invalid = dict(body, version=1, kaimyo_meaning='あ' * 4001)
+        self.assertEqual(self.request('PUT', path, invalid)[0], 400)
+        older_body = {key: value for key, value in body.items() if key != 'kaimyo_meaning'}
+        older_body['version'] = 1
+        self.assertEqual(self.request('PUT', path, older_body)[0], 200)
+        _, state = self.request('GET', '/api/state')
+        self.assertEqual(state['deceased'][0]['kaimyo_meaning'], body['kaimyo_meaning'])
+        self.assertEqual(self.request('PUT', path, dict(body, version=2, kaimyo_meaning=''))[0], 200)
+        _, state = self.request('GET', '/api/state')
+        self.assertEqual(state['deceased'][0]['kaimyo_meaning'], '')
+
+    def test_kaimyo_meaning_migration_preserves_existing_deceased(self):
+        legacy = Path(self.temp.name) / 'legacy-deceased.sqlite3'
+        with app.connect(legacy) as db:
+            db.execute("CREATE TABLE deceased (id INTEGER PRIMARY KEY, household_id INTEGER, name TEXT, kana TEXT, kaimyo TEXT, death_date TEXT, birth_date TEXT, notes TEXT)")
+            db.execute("INSERT INTO deceased VALUES (1,NULL,'架空旧故人','','架空旧戒名','2026-01-01','','架空旧備考')")
+        app.initialise(legacy)
+        app.initialise(legacy)
+        with app.connect(legacy) as db:
+            person = db.execute('SELECT * FROM deceased').fetchone()
+            self.assertEqual(person['kaimyo'], '架空旧戒名')
+            self.assertEqual(person['notes'], '架空旧備考')
+            self.assertEqual(person['kaimyo_meaning'], '')
+
     def test_hashed_font_cache_and_original_is_not_served(self):
         fonts = list((app.ROOT / 'web/assets/fonts').glob('noto-serif-jp-common-*.woff2'))
         self.assertTrue(fonts, 'Generated common font must be included in the source distribution')

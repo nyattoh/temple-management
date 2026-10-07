@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parent
 FONT_NAME = re.compile(r'noto-serif-jp-[a-z0-9-]+-[0-9a-f]{12}\.woff2')
 FIELDS = {
     'households': ('name', 'kana', 'postal_code', 'address', 'phone', 'notes'),
-    'deceased': ('household_id', 'name', 'kana', 'kaimyo', 'death_date', 'birth_date', 'notes'),
+    'deceased': ('household_id', 'name', 'kana', 'kaimyo', 'kaimyo_meaning', 'death_date', 'birth_date', 'notes'),
     'events': ('title', 'date', 'notes'),
 }
 RULES = [('first', '初七日', 6), ('second', '二七日', 13), ('third', '三七日', 20),
@@ -67,6 +67,8 @@ def initialise(path):
                 db.execute(f'ALTER TABLE {table} ADD COLUMN version INTEGER NOT NULL DEFAULT 1')
         if 'postal_code' not in {row['name'] for row in db.execute('PRAGMA table_info(households)')}:
             db.execute("ALTER TABLE households ADD COLUMN postal_code TEXT NOT NULL DEFAULT ''")
+        if 'kaimyo_meaning' not in {row['name'] for row in db.execute('PRAGMA table_info(deceased)')}:
+            db.execute("ALTER TABLE deceased ADD COLUMN kaimyo_meaning TEXT NOT NULL DEFAULT ''")
 
 
 def validate_day(value):
@@ -91,7 +93,7 @@ def validate_record(table, body):
             elif type(value) is not int or value <= 0:
                 raise InputError('檀家を選び直してください。')
         else:
-            if not isinstance(value, str) or len(value) > (4000 if field == 'notes' else 200):
+            if not isinstance(value, str) or len(value) > (4000 if field in ('notes', 'kaimyo_meaning') else 200):
                 raise InputError('文字数または入力形式が不正です。')
             value = value.strip()
         result[field] = value
@@ -254,6 +256,8 @@ class Handler(BaseHTTPRequestHandler):
                     return self.reply(404, {'error': '見つかりません。'})
                 table = parts[1]
                 values = validate_record(table, body)
+                if self.command == 'PUT' and table == 'deceased' and 'kaimyo_meaning' not in body:
+                    values.pop('kaimyo_meaning')
                 if self.command == 'POST' and len(parts) == 2:
                     columns = ','.join(values)
                     placeholders = ','.join('?' for _ in values)

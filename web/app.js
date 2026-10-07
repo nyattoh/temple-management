@@ -288,11 +288,15 @@ if (typeof document === 'undefined') {
   function deceasedPage(item, onlyKaimyo) {
     const page = reportPage(onlyKaimyo ? '戒名' : '過去帳'); const body = node('div', undefined, 'vertical-body');
     page.dataset.personName = item.name;
+    if (onlyKaimyo) page.classList.add('kaimyo-landscape');
     body.append(node('p', item.kaimyo || '戒名未登録', 'vertical-kaimyo'));
     if (!onlyKaimyo) {
       for (const text of [`俗名　${item.name}`, `命日　${printDate(item.death_date)}`, `生年月日　${printDate(item.birth_date)}`, `檀家　${householdName(item.household_id)}`]) body.append(node('p', text));
       if ($('report-notes').checked) body.append(node('p', `備考　${item.notes || 'なし'}`));
-    } else body.append(node('p', `俗名　${item.name}\n命日　${printDate(item.death_date)}`));
+    } else {
+      body.append(node('p', `俗名　${item.name}\n命日　${printDate(item.death_date)}`));
+      body.append(node('p', `戒名の意味\n${item.kaimyo_meaning || '未登録'}`, 'vertical-meaning'));
+    }
     page.append(body); return page;
   }
   async function prepareReport() {
@@ -327,7 +331,7 @@ if (typeof document === 'undefined') {
       const overflowPages = pages.filter(page => page.scrollHeight > page.clientHeight || page.scrollWidth > page.clientWidth || [...page.querySelectorAll('.vertical-body')].some(body => body.scrollHeight > body.clientHeight || body.scrollWidth > body.clientWidth));
       const overflow = overflowPages.length > 0;
       for (const page of overflowPages) page.classList.add('report-overflow');
-      $('report-warning').textContent = overflow ? `帳票に収まらない文字があります：${overflowPages.map(page => `${pages.indexOf(page) + 1}ページ目（${page.dataset.personName}）`).join('、')}。戒名を確認するか、備考を含める設定を外してください。印刷を停止しています。` : `${pages.length}ページ。欠字・異体字・原本との一致は未確認です。${fontMissing ? '同梱フォントを読み込めず、代替フォントを使用しています。' : ''}`;
+      $('report-warning').textContent = overflow ? `帳票に収まらない文字があります：${overflowPages.map(page => `${pages.indexOf(page) + 1}ページ目（${page.dataset.personName}）`).join('、')}。長い戒名・戒名の意味・備考を確認してください。印刷を停止しています。` : `${pages.length}ページ。欠字・異体字・原本との一致は未確認です。${fontMissing ? '同梱フォントを読み込めず、代替フォントを使用しています。' : ''}`;
       reportReady = !overflow; $('print-report').disabled = !reportReady;
     } catch (error) { showError(error); }
     finally { reportBusy = false; $('preview-report').disabled = false; }
