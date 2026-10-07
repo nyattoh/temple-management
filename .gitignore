@@ -1,0 +1,22 @@
+# Private source material and generated personal data must never enter OSS.
+*.mdb
+*.accdb
+*.ldb
+*.laccdb
+*.sqlite*
+*.db
+data/
+backups/
+private/
+exports/
+access-migration-plan.*
+README-OSS.md
+README-PUBLIC.md
+VALIDATION.md
+web/assets/NotoSerifCJKjp-Regular.otf
+.specstory/
+.vscode/
+.playwright-mcp/
+.cursorindexingignore
+__pycache__/
+*.pyc

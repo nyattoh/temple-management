@@ -1,0 +1,830 @@
+/* ==========================================================================
+   Web Font & Root Design Tokens
+   Tone: 寺務帳 (清澄な白い余白、極淡いミント/水色/薄いピンク、細い薄灰罫線、
+         円み小さめの穏やかなボタン、視認性の高い濃い灰緑文字)
+   ========================================================================== */
+:root {
+  color-scheme: light;
+  --bg-page: #fafcfb;
+  --surface: #ffffff;
+  --surface-alt: #f4f8f6;
+  --ink: #23342d;
+  --ink-secondary: #3d5047;
+  --muted: #5e7167;
+  --line: #dce3df;
+  --line-light: #eaf0ec;
+  --line-focus: #376352;
+  --green: #35584b;
+  --green-hover: #2b493e;
+  --green-active: #213a31;
+  --mint-light: #eff7f4;
+  --sky-light: #f0f7fb;
+  --pink-light: #fdf3f5;
+  --error-bg: #fdf2f0;
+  --error-text: #892821;
+  --error-border: #f4d0cb;
+  --shadow-sm: 0 1px 3px rgba(35, 52, 45, 0.05);
+  --shadow-md: 0 3px 12px rgba(35, 52, 45, 0.06);
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  position: relative;
+  min-height: 100vh;
+  margin: 0;
+  background-color: var(--bg-page);
+  /* 画面上部の薄いピンク〜水色〜ミントのグラデーションと雲を連想する柔らかなCSS曲線の背景装飾 */
+  background-image:
+    radial-gradient(ellipse 480px 140px at 12% -20px, rgba(253, 240, 243, 0.75) 0%, rgba(253, 240, 243, 0) 70%),
+    radial-gradient(ellipse 520px 150px at 48% -30px, rgba(238, 247, 252, 0.8) 0%, rgba(238, 247, 252, 0) 70%),
+    radial-gradient(ellipse 540px 160px at 84% -20px, rgba(233, 247, 242, 0.85) 0%, rgba(233, 247, 242, 0) 70%),
+    linear-gradient(180deg, #f7faf9 0%, #ffffff 200px, var(--bg-page) 100%);
+  background-repeat: no-repeat;
+  color: var(--ink);
+  font-family: 'Noto Serif JP', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+  font-size: 21px;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   レイアウト基本 & コンテナ幅 (一覧が狭くならない max-width ~1440px)
+   ========================================================================== */
+header,
+main,
+nav,
+footer,
+#status,
+#error {
+  max-width: 1440px;
+  margin-left: auto;
+  margin-right: auto;
+  position: relative;
+  z-index: 1;
+}
+
+header {
+  padding: 36px 32px 24px;
+}
+
+h1,
+h2,
+h3,
+.eyebrow {
+  font-family: 'Noto Serif JP', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+  color: var(--ink);
+}
+
+h1 {
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  margin: 6px 0 10px;
+  line-height: 1.3;
+}
+
+header p {
+  margin: 6px 0;
+  font-size: 18px;
+  color: var(--ink-secondary);
+}
+
+.eyebrow {
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+/* ==========================================================================
+   ナビゲーション
+   ========================================================================== */
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 32px;
+  border-block: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(4px);
+}
+
+nav button {
+  background: var(--surface);
+  color: var(--green);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  font-size: 20px;
+  min-height: 52px;
+  padding: 10px 22px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+nav button:hover:not(:disabled) {
+  background: var(--mint-light);
+  border-color: #bcd5ca;
+  color: var(--green-hover);
+}
+
+nav button[aria-pressed="true"] {
+  background: var(--green);
+  color: #ffffff;
+  border-color: var(--green);
+  box-shadow: var(--shadow-sm);
+}
+
+nav button[aria-pressed="true"]:hover {
+  background: var(--green-hover);
+  border-color: var(--green-hover);
+}
+
+/* ==========================================================================
+   フォーム・操作系要素 (ボタン/入力 min-height 52-56px, 文字 20-22px)
+   ========================================================================== */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 20px;
+  color: var(--ink);
+}
+
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 10px 24px;
+  border: 1px solid var(--green);
+  border-radius: var(--radius-md);
+  background: var(--green);
+  color: #ffffff;
+  font-weight: 500;
+  cursor: pointer;
+  line-height: 1.4;
+  box-shadow: var(--shadow-sm);
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  background: var(--green-hover);
+  border-color: var(--green-hover);
+}
+
+button:active:not(:disabled) {
+  background: var(--green-active);
+  border-color: var(--green-active);
+}
+
+button.secondary {
+  background: var(--surface);
+  color: var(--green);
+  border: 1px solid var(--line);
+  box-shadow: none;
+}
+
+button.secondary:hover:not(:disabled) {
+  background: var(--mint-light);
+  border-color: #b7cebf;
+  color: var(--green-hover);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+  box-shadow: none;
+}
+
+:focus-visible {
+  outline: 3px solid var(--line-focus);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   メイン領域・見出し・入力部品
+   ========================================================================== */
+main {
+  padding: 28px 32px 48px;
+}
+
+h2 {
+  font-size: 32px;
+  margin: 0 0 22px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+h3 {
+  font-size: 26px;
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+label {
+  display: block;
+  margin: 16px 0;
+  font-weight: 500;
+  font-size: 20px;
+}
+
+input,
+select,
+textarea {
+  display: block;
+  width: 100%;
+  min-height: 52px;
+  padding: 11px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #ffffff;
+  color: var(--ink);
+  margin-top: 6px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--line-focus);
+  box-shadow: 0 0 0 2px rgba(53, 88, 75, 0.15);
+  outline: none;
+}
+
+textarea {
+  min-height: 110px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.search {
+  max-width: 680px;
+  margin-bottom: 24px;
+}
+
+.search input {
+  margin-top: 8px;
+}
+
+/* ==========================================================================
+   レイアウトグリッド (一覧とフォーム、フォーム列 min 360px)
+   ========================================================================== */
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(360px, 1fr);
+  gap: 36px;
+  align-items: start;
+}
+
+.columns form,
+#rules-form,
+#rokuyo-form {
+  border: 1px solid var(--line);
+  padding: 28px 24px;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+/* ==========================================================================
+   テーブル・一覧表示
+   ========================================================================== */
+.table-wrap {
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--line-light);
+  padding: 16px 14px;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+  font-size: 20px;
+}
+
+th {
+  background: var(--surface-alt);
+  font-weight: 600;
+  color: var(--ink);
+  border-bottom: 1px solid var(--line);
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:hover td {
+  background: rgba(239, 247, 244, 0.4);
+}
+
+td button {
+  padding: 6px 14px;
+  font-size: 17px;
+  min-height: 44px;
+  margin: 3px 2px;
+  white-space: nowrap;
+}
+
+.subtext {
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+/* ==========================================================================
+   郵便番号・住所入力拡張 (.postal-fields / .postal-options / .postal-help)
+   親HTML追加対応
+   ========================================================================== */
+.postal-fields {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.postal-fields input {
+  margin-top: 0;
+}
+
+.postal-fields button {
+  min-height: 52px;
+  white-space: nowrap;
+  padding: 10px 20px;
+}
+
+.postal-options {
+  margin-top: 10px;
+  width: 100%;
+}
+
+.postal-options select {
+  width: 100%;
+  min-height: 52px;
+}
+
+.postal-help {
+  font-size: 18px;
+  color: var(--muted);
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 20px;
+  cursor: pointer;
+  min-height: 52px;
+  margin: 14px 0;
+  user-select: none;
+}
+
+.checkbox-label input[type="checkbox"],
+.checkbox-label input {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  max-width: 24px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--green);
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   お知らせ・ステータス・エラー表示
+   ========================================================================== */
+.notice {
+  padding: 16px 22px;
+  background: var(--mint-light);
+  border-left: 4px solid #4a7566;
+  border-radius: var(--radius-sm);
+  font-size: 18px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  margin: 16px 0 20px;
+}
+
+#status:not(:empty),
+#error:not([hidden]) {
+  padding: 14px 28px;
+  border-radius: var(--radius-md);
+  margin: 14px auto;
+  font-size: 19px;
+  line-height: 1.5;
+}
+
+#status {
+  background: var(--mint-light);
+  color: var(--green-hover);
+  border: 1px solid #c2e2d6;
+}
+
+#error {
+  background: var(--error-bg);
+  color: var(--error-text);
+  border: 1px solid var(--error-border);
+}
+
+footer {
+  padding: 28px 32px 36px;
+  font-size: 18px;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  margin-top: 48px;
+}
+
+/* ==========================================================================
+   予定・カレンダー
+   ========================================================================== */
+.calendar-controls {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-block: 20px;
+}
+
+.calendar-controls label {
+  margin: 0;
+  max-width: 280px;
+}
+
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  margin-bottom: 32px;
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.calendar-heading,
+.calendar-day {
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 10px;
+  min-width: 0;
+}
+
+.calendar-heading {
+  text-align: center;
+  background: var(--surface-alt);
+  font-weight: 600;
+  font-size: 18px;
+  color: var(--ink);
+  padding-block: 12px;
+}
+
+.calendar-day {
+  min-height: 120px;
+  background: var(--surface);
+  font-size: 18px;
+}
+
+.calendar-day.empty {
+  background: #f7f9f8;
+}
+
+.calendar-day.today {
+  box-shadow: inset 0 0 0 2px var(--green);
+  background: #f5fbf8;
+}
+
+.calendar-note {
+  font-size: 18px;
+  line-height: 1.5;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+  color: var(--ink-secondary);
+}
+
+.event-row {
+  border-bottom: 1px solid var(--line-light);
+  padding: 14px 0;
+  font-size: 20px;
+}
+
+.event-row button {
+  margin-left: 12px;
+  padding: 6px 14px;
+  min-height: 44px;
+  font-size: 17px;
+}
+
+.rule-row {
+  display: grid;
+  grid-template-columns: 1fr 180px;
+  gap: 20px;
+  align-items: center;
+  max-width: 720px;
+  margin-bottom: 16px;
+}
+
+.section-heading {
+  margin-top: 36px;
+}
+
+/* ==========================================================================
+   帳票・印刷設定 (寸法厳守 / UI大文字の漏れを防止)
+   - A4寸法: 210mm x 297mm
+   - 縦書き領域: 228mm x 174mm
+   - 帳票文字: 18px / 22px / 38px
+   - 見出し h2: 25px 固定
+   ========================================================================== */
+.report-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.report-controls label {
+  min-width: 260px;
+}
+
+.report-controls button {
+  margin-bottom: 16px;
+}
+
+#report-warning {
+  color: var(--error-text);
+  font-size: 18px;
+}
+
+#report-preview {
+  overflow: auto;
+  padding-bottom: 28px;
+}
+
+.report-page {
+  width: 210mm;
+  height: 297mm;
+  background: #ffffff;
+  color: #111111;
+  padding: 18mm;
+  margin: 15px auto;
+  border: 0;
+  outline: 1px solid #cccccc;
+  overflow: hidden;
+  font-family: 'Noto Serif JP', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+  font-size: 16px;
+  line-height: 1.6;
+  break-after: page;
+  box-sizing: border-box;
+}
+
+.report-page:last-child {
+  break-after: auto;
+}
+
+/* UI側の32px〜大文字指定が帳票の表題高さを増やしページ溢れしないよう25pxで固定 */
+.report-page h2 {
+  font-size: 25px !important;
+  text-align: center;
+  margin: 0 0 10mm;
+  font-weight: 600;
+  line-height: 1.4;
+  font-family: 'Noto Serif JP', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+  color: #111111;
+}
+
+.vertical-body {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  height: 228mm;
+  width: 174mm;
+  font-size: 22px;
+  line-height: 1.9;
+  overflow: hidden;
+  font-family: 'Noto Serif JP', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+  color: #111111;
+}
+
+.vertical-body p {
+  margin: 0 0 0 12mm;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.vertical-kaimyo {
+  font-size: 38px;
+  line-height: 1.6;
+}
+
+.memorial-body {
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+.memorial-body p {
+  margin-left: 5mm;
+}
+
+.report-table th,
+.report-table td {
+  padding: 10px;
+  border-color: #cccccc;
+  font-size: 16px;
+  font-family: 'Noto Serif JP', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+  color: #111111;
+}
+
+.report-table th {
+  background: none;
+  font-weight: 600;
+}
+
+.report-small {
+  font-size: 13px;
+}
+
+.report-overflow {
+  outline: 3px solid #9e332a;
+}
+
+#print-area {
+  display: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* ==========================================================================
+   メディアクエリ (レスポンシブ対応: デスクトップ / タブレット / 小画面)
+   ========================================================================== */
+@media (max-width: 960px) {
+  .columns {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  header,
+  main,
+  nav,
+  footer {
+    padding-inline: 20px;
+  }
+
+  .rule-row {
+    grid-template-columns: 1fr 140px;
+  }
+}
+
+@media (max-width: 680px) {
+  body {
+    font-size: 20px;
+  }
+
+  h1 {
+    font-size: 34px;
+  }
+
+  h2 {
+    font-size: 28px;
+  }
+
+  header {
+    padding: 24px 16px 18px;
+  }
+
+  main,
+  nav,
+  footer {
+    padding-inline: 16px;
+  }
+
+  nav {
+    gap: 8px;
+  }
+
+  nav button {
+    font-size: 18px;
+    padding: 8px 14px;
+  }
+
+  .postal-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .postal-fields button {
+    width: 100%;
+  }
+
+  .calendar-controls {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .calendar-day {
+    min-height: 85px;
+    padding: 6px;
+    font-size: 15px;
+  }
+
+  .calendar-note {
+    font-size: 18px;
+  }
+
+  .rule-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .report-page {
+    margin-left: 0;
+  }
+}
+
+/* ==========================================================================
+   印刷メディアスタイル
+   ========================================================================== */
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+    background-image: none !important;
+  }
+
+  body::before {
+    display: none !important;
+  }
+
+  body > header,
+  body > nav,
+  body > main,
+  body > footer,
+  #status,
+  #error {
+    display: none !important;
+  }
+
+  #print-area {
+    display: block;
+  }
+
+  #print-area .report-page {
+    margin: 0;
+    border: 0;
+    box-shadow: none;
+    outline: none;
+  }
+
+  .report-page {
+    outline: none;
+  }
+
+  .report-overflow {
+    outline: none;
+  }
+}
+.calendar-scroll { overflow-x: auto; } td button, .event-row button { min-height: 52px; font-size: 20px; } @media (max-width: 680px) { .calendar { min-width: 640px; } .calendar-day { font-size: 20px; min-height: 120px; } }

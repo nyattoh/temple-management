@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>寺務帳 — 檀家・過去帳</title>
+  <link rel="stylesheet" href="/assets/noto-serif-subsets.css">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header><p class="eyebrow">寺院の記録を、手元に。</p><h1>寺務帳</h1><p>檀家帳・過去帳・七日参り・予定</p></header>
+  <div id="status" role="status" aria-live="polite"></div>
+  <div id="error" role="alert" hidden></div>
+  <nav aria-label="帳簿の切り替え">
+    <button type="button" data-tab="households" aria-pressed="true">檀家帳</button>
+    <button type="button" data-tab="deceased" aria-pressed="false">過去帳</button>
+    <button type="button" data-tab="schedule" aria-pressed="false">予定・カレンダー</button>
+    <button type="button" data-tab="rules" aria-pressed="false">七日参りの設定</button>
+    <button type="button" data-tab="reports" aria-pressed="false">帳票・印刷</button>
+  </nav>
+  <main>
+    <section id="households" class="panel">
+      <h2>檀家帳</h2><label class="search">家名・かな・住所・電話から検索<input id="household-search" type="search" autocomplete="off"></label>
+      <div class="columns"><div><p id="household-count"></p><div class="table-wrap"><table><caption class="sr-only">檀家一覧</caption><thead><tr><th>家名</th><th>住所</th><th>電話</th><th>操作</th></tr></thead><tbody id="household-list"></tbody></table></div></div>
+      <form id="household-form"><h3 id="household-form-title">檀家を登録</h3><input name="id" type="hidden"><input name="version" type="hidden"><label>家名（必須）<input name="name" required maxlength="200"></label><label>かな<input name="kana" maxlength="200"></label><div class="postal-fields"><label>郵便番号<input id="postal-code" name="postal_code" inputmode="numeric" autocomplete="postal-code" maxlength="9" placeholder="例：100-0013" aria-describedby="postal-help"></label><button id="postal-lookup" type="button" class="secondary">住所を調べる</button></div><p id="postal-help" class="subtext" role="status" aria-live="polite">7桁入力すると町域まで自動入力します。番地・建物名は続けて入力してください。</p><label id="postal-options-label" class="postal-options" hidden>住所の候補<select id="postal-options"></select></label><button id="postal-replace" type="button" class="secondary" hidden>住所を候補に置き換える</button><label>住所・番地・建物名<input id="household-address" name="address" autocomplete="street-address" maxlength="200"></label><label>電話<input name="phone" type="tel" maxlength="100"></label><label>備考<textarea name="notes" maxlength="4000"></textarea></label><div class="actions"><button type="submit">保存</button><button type="reset" class="secondary">新規入力に戻す</button></div></form></div>
+    </section>
+    <section id="deceased" class="panel" hidden>
+      <h2>過去帳</h2><label class="search">俗名・かな・戒名・檀家名から検索<input id="deceased-search" type="search" autocomplete="off"></label>
+      <div class="columns"><div><p id="deceased-count"></p><div class="table-wrap"><table><caption class="sr-only">故人一覧</caption><thead><tr><th>俗名・戒名</th><th>檀家</th><th>命日</th><th>操作</th></tr></thead><tbody id="deceased-list"></tbody></table></div><div id="memorial-detail" class="notice" hidden></div></div>
+      <form id="deceased-form"><h3 id="deceased-form-title">故人を登録</h3><input name="id" type="hidden"><input name="version" type="hidden"><label>檀家（必須）<select name="household_id" required></select></label><label>俗名（必須）<input name="name" required maxlength="200"></label><label>かな<input name="kana" maxlength="200"></label><label>戒名<input name="kaimyo" maxlength="200"></label><label>命日（必須）<input name="death_date" type="date" required></label><label>生年月日<input name="birth_date" type="date"></label><label>備考<textarea name="notes" maxlength="4000"></textarea></label><div class="actions"><button type="submit">保存</button><button type="reset" class="secondary">新規入力に戻す</button></div></form></div>
+    </section>
+    <section id="schedule" class="panel" hidden>
+      <h2>予定・カレンダー</h2><p class="notice">六曜は出典を付けて取り込んだ日付のみ表示します。「六曜未収録」の日は推算しません。</p>
+      <div class="calendar-controls"><button id="previous-month" type="button" class="secondary">前月</button><label>表示月<input id="calendar-month" type="month"></label><button id="next-month" type="button" class="secondary">翌月</button></div><div class="calendar-scroll"><div id="calendar" class="calendar" aria-label="月間カレンダー"></div></div>
+      <div class="columns"><div><h3>表示月の予定</h3><div id="event-list"></div></div><form id="event-form"><h3 id="event-form-title">予定を登録</h3><input name="id" type="hidden"><input name="version" type="hidden"><label>件名（必須）<input name="title" required maxlength="200"></label><label>日付（必須）<input name="date" type="date" required></label><label>備考<textarea name="notes" maxlength="4000"></textarea></label><div class="actions"><button type="submit">保存</button><button type="reset" class="secondary">新規入力に戻す</button></div></form></div>
+    </section>
+    <section id="rules" class="panel" hidden><h2>七日参りの設定</h2><p>命日を0日目として、命日から何日後かを指定します。例えば命日を1日目と数える初七日は「6」です。寺院の数え方に合わせて変更してください。</p><form id="rules-form"><div id="rule-fields"></div><button type="submit">日数を保存</button></form><h2 class="section-heading">六曜の取り込み</h2><p id="rokuyo-summary"></p><p>UTF-8のCSVを選択してください。先頭行は <code>date,rokuyo</code>、各行は日付（YYYY-MM-DD）と六曜（先勝・友引・先負・仏滅・大安・赤口）を指定します。出典に基づく内容を確認してから取り込んでください。同日の既存値は更新されます。</p><form id="rokuyo-form"><label>六曜CSV（必須）<input id="rokuyo-file" type="file" accept=".csv,text/csv" required></label><label>出典（必須）<input id="rokuyo-source" required maxlength="300" placeholder="使用した暦の名称・年版など"></label><button type="submit">六曜を取り込む</button></form></section>
+    <section id="reports" class="panel" hidden><h2>帳票・印刷</h2><p class="notice">文字の欠け・異体字・原本との一致は未確認です。印刷プレビューと原本を照合してください。ローカル明朝フォントへの代替が生じる場合があります。</p><div class="report-controls"><label>帳票<select id="report-type"><option value="register">過去帳一覧（故人ごとに1ページ）</option><option value="kaimyo">選択故人の戒名</option><option value="memorial">選択故人の七日参り</option></select></label><label>故人<select id="report-deceased"></select></label><button id="preview-report" type="button">帳票を表示</button><button id="print-report" type="button" disabled>印刷</button></div><label class="checkbox-label"><input id="report-notes" type="checkbox">過去帳に備考を含める（既定では印刷しません）</label><p id="report-warning" role="status"></p><div id="report-preview"></div></section>
+  </main>
+  <footer>データはこの端末のローカル保存先で管理します。終了後はブラウザーを閉じてください。</footer>
+  <div id="print-area" aria-hidden="true"></div>
+</body>
+</html>
