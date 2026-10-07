@@ -7,6 +7,7 @@ import re
 ROOT = Path(__file__).resolve().parent
 FILES = ('app.py', 'postal.py', 'test_app.py', 'package_oss.py', 'prepare_remote.ps1', 'README.md', 'LICENSE', '.gitignore',
          'docs/images/deceased-meaning.png', 'docs/images/kaimyo-landscape.png',
+         'docs/images/households-deceased.png', 'docs/images/past-register-list.png',
          'web/index.html', 'web/app.js', 'web/style.css',
          'web/assets/noto-serif-subsets.css', 'web/assets/font-subsets.json', 'web/assets/FONT-SUBSETS.md', 'web/assets/OFL.txt',
          'scripts/build_fonts.py',

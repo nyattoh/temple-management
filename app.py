@@ -59,6 +59,7 @@ def initialise(path):
         CREATE TABLE IF NOT EXISTS rules (
           id TEXT PRIMARY KEY, label TEXT NOT NULL, offset_days INTEGER NOT NULL CHECK(offset_days BETWEEN 0 AND 366));
         CREATE TABLE IF NOT EXISTS rokuyo (date TEXT PRIMARY KEY, label TEXT NOT NULL, source TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS id_sequences (name TEXT PRIMARY KEY, last_id INTEGER NOT NULL);
         ''')
         db.executemany('INSERT OR IGNORE INTO rules (id,label,offset_days) VALUES (?,?,?)', RULES)
         for table in (*FIELDS, 'rules'):
@@ -69,6 +70,7 @@ def initialise(path):
             db.execute("ALTER TABLE households ADD COLUMN postal_code TEXT NOT NULL DEFAULT ''")
         if 'kaimyo_meaning' not in {row['name'] for row in db.execute('PRAGMA table_info(deceased)')}:
             db.execute("ALTER TABLE deceased ADD COLUMN kaimyo_meaning TEXT NOT NULL DEFAULT ''")
+        db.execute("INSERT OR IGNORE INTO id_sequences VALUES ('deceased', (SELECT COALESCE(MAX(id), 0) FROM deceased))")
 
 
 def validate_day(value):
@@ -157,7 +159,7 @@ class Handler(BaseHTTPRequestHandler):
         origins = {remote['origin']} if remote else {f'http://{host}' for host in allowed}
         if origin and origin not in origins:
             return False
-        if remote and self.command in ('POST', 'PUT') and origin != remote['origin']:
+        if remote and self.command in ('POST', 'PUT', 'DELETE') and origin != remote['origin']:
             return False
         return self.headers.get('Sec-Fetch-Site') not in ('cross-site',)
 
@@ -176,7 +178,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(200, result)
             with connect(self.server.db_path) as db:
                 if path in ('/api/state', '/api/export'):
-                    state = {table: [dict(row) for row in db.execute(f'SELECT * FROM {table} ORDER BY {"date" if table == "rokuyo" else "offset_days, id" if table == "rules" else "id"}')]
+                    state = {table: [dict(row) for row in db.execute(f'SELECT * FROM {table} ORDER BY {"date" if table == "rokuyo" else "death_date, id" if table == "deceased" else "offset_days, id" if table == "rules" else "id"}')]
                              for table in (*FIELDS, 'rules', 'rokuyo')}
                     return self.reply(200, state)
                 if path.startswith('/api/memorials/'):
@@ -212,6 +214,19 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(raw)
             parts = urlsplit(self.path).path.strip('/').split('/')
             with connect(self.server.db_path) as db:
+                if self.command == 'DELETE':
+                    if len(parts) != 3 or parts[:2] != ['api', 'deceased']:
+                        return self.reply(405, {'error': '故人の削除だけに対応しています。'})
+                    if not isinstance(body, dict) or set(body) != {'version'} or type(body['version']) is not int or body['version'] < 1:
+                        raise InputError('画面を再読込みし、削除する故人を確認してください。')
+                    person_id = int(parts[2])
+                    cursor = db.execute('DELETE FROM deceased WHERE id=? AND version=?', (person_id, body['version']))
+                    if cursor.rowcount != 1:
+                        if db.execute('SELECT id FROM deceased WHERE id=?', (person_id,)).fetchone():
+                            raise ConflictError()
+                        return self.reply(404, {'error': '故人が見つかりません。'})
+                    db.commit()
+                    return self.reply(200, {'ok': True, 'id': person_id})
                 if parts == ['api', 'rokuyo'] and self.command == 'POST':
                     if not isinstance(body, dict):
                         raise InputError('入力が不正です。')
@@ -259,6 +274,10 @@ class Handler(BaseHTTPRequestHandler):
                 if self.command == 'PUT' and table == 'deceased' and 'kaimyo_meaning' not in body:
                     values.pop('kaimyo_meaning')
                 if self.command == 'POST' and len(parts) == 2:
+                    if table == 'deceased':
+                        # Keep IDs unique across deletion so an old tab cannot delete a new person.
+                        db.execute("UPDATE id_sequences SET last_id=MAX(last_id, (SELECT COALESCE(MAX(id),0) FROM deceased))+1 WHERE name='deceased'")
+                        values['id'] = db.execute("SELECT last_id FROM id_sequences WHERE name='deceased'").fetchone()[0]
                     columns = ','.join(values)
                     placeholders = ','.join('?' for _ in values)
                     row_id = db.execute(f'INSERT INTO {table} ({columns}) VALUES ({placeholders})', tuple(values.values())).lastrowid
@@ -291,6 +310,7 @@ class Handler(BaseHTTPRequestHandler):
 
     do_POST = mutate
     do_PUT = mutate
+    do_DELETE = mutate
 
 
 def main():

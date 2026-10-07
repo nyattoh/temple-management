@@ -358,6 +358,24 @@ td button {
   line-height: 1.6;
 }
 
+.deceased-filter,
+.household-deceased-heading,
+.household-person,
+.deceased-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.deceased-filter { align-items: end; margin-bottom: 18px; }
+.deceased-filter label { margin: 0; min-width: 200px; }
+.household-deceased td { background: var(--surface-alt); padding: 18px 22px 24px; }
+.household-deceased-heading { justify-content: space-between; font-weight: 600; margin-bottom: 12px; }
+.household-person { justify-content: space-between; border-top: 1px solid var(--line); padding: 14px 0; }
+.deceased-controls { gap: 6px; }
+.deceased-controls button { margin: 0; }
+
 /* ==========================================================================
    郵便番号・住所入力拡張 (.postal-fields / .postal-options / .postal-help)
    親HTML追加対応
@@ -660,6 +678,10 @@ footer {
   font-size: 20px;
   line-height: 1.8;
 }
+
+.register-list-body { font-size: 18px; line-height: 1.6; }
+.register-list-body p { margin: 0; }
+.register-entry { border-left: 1px solid #dce3df; padding-left: 1mm; margin-left: 2mm; }
 
 .memorial-body {
   font-size: 18px;

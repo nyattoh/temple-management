@@ -226,6 +226,41 @@ class AppTests(unittest.TestCase):
         self.assertEqual(self.request('GET', '/assets/NotoSerifCJKjp-Regular.otf')[0], 404)
         self.assertEqual(self.request('GET', '/assets/fonts/../data/temple.sqlite3')[0], 404)
 
+    def test_delete_deceased_checks_version_and_does_not_reuse_ids(self):
+        _, household = self.request('POST', '/api/households', {'name': '架空の削除試験世帯'})
+        person = {'name': '架空の削除試験故人', 'household_id': household['id'], 'death_date': '2026-10-01'}
+        _, created = self.request('POST', '/api/deceased', person)
+        path = f"/api/deceased/{created['id']}"
+        self.assertEqual(self.request('DELETE', path, {'version': True})[0], 400)
+        self.assertEqual(self.request('DELETE', '/api/households/' + str(household['id']), {'version': 1})[0], 405)
+        self.assertEqual(self.request('PUT', path, dict(person, version=1))[0], 200)
+        self.assertEqual(self.request('DELETE', path, {'version': 1})[0], 409)
+        self.assertEqual(self.request('DELETE', path, {'version': 2})[0], 200)
+        self.assertEqual(self.request('GET', '/api/memorials/' + str(created['id']))[0], 404)
+        _, state = self.request('GET', '/api/state')
+        self.assertEqual(state['deceased'], [])
+        self.assertEqual(len(state['households']), 1)
+        _, next_person = self.request('POST', '/api/deceased', person)
+        self.assertGreater(next_person['id'], created['id'])
+        self.assertEqual(self.request('DELETE', path, {'version': 1})[0], 404)
+        _, state = self.request('GET', '/api/state')
+        self.assertEqual(state['deceased'][0]['id'], next_person['id'])
+
+    def test_remote_delete_requires_identity_and_matching_origin(self):
+        _, created = self.request('POST', '/api/deceased', {'name': '架空', 'death_date': '2026-01-01'})
+        path = f"/api/deceased/{created['id']}"
+        self.server.remote = {'origin': 'https://example.test.ts.net:8443', 'allowed_user': 'synthetic@example.invalid'}
+        allowed = {'Host': 'example.test.ts.net:8443', 'Tailscale-User-Login': 'synthetic@example.invalid'}
+        self.assertEqual(self.request('DELETE', path, {'version': 1}, **allowed)[0], 403)
+        self.assertEqual(self.request('DELETE', path, {'version': 1}, Origin='https://external.invalid', **allowed)[0], 403)
+        self.assertEqual(self.request('DELETE', path, {'version': 1}, Origin=self.server.remote['origin'], **allowed)[0], 200)
+
+    def test_deceased_state_is_chronological(self):
+        for day in ('2026-12-31', '2024-02-29', '2026-01-01'):
+            self.request('POST', '/api/deceased', {'name': '架空の日付順試験', 'death_date': day})
+        _, state = self.request('GET', '/api/state')
+        self.assertEqual([row['death_date'] for row in state['deceased']], ['2024-02-29', '2026-01-01', '2026-12-31'])
+
 
 if __name__ == '__main__':
     unittest.main()
