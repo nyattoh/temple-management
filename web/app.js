@@ -146,8 +146,16 @@ if (typeof document === 'undefined') {
   }
   function deceasedControls(item) {
     const controls = node('div', undefined, 'deceased-controls');
-    controls.append(deceasedAction('編集', () => edit('deceased', item)), deceasedAction('七日参り', () => showMemorial(item)), deceasedAction('削除', () => deleteDeceased(item)));
+    const print = deceasedAction('印刷', () => previewDeceased(item));
+    print.setAttribute('aria-label', `${item.name}の戒名を印刷`);
+    controls.append(deceasedAction('編集', () => edit('deceased', item)), deceasedAction('七日参り', () => showMemorial(item)), deceasedAction('削除', () => deleteDeceased(item)), print);
     return controls;
+  }
+  async function previewDeceased(item) {
+    if (deceasedBusy || loading || reportBusy) return;
+    switchTab('reports'); $('report-type').value = 'kaimyo'; $('report-deceased').value = String(item.id);
+    invalidateReport(); await prepareReport();
+    if (reportReady && $('report-type').value === 'kaimyo' && $('report-deceased').value === String(item.id)) { $('report-preview').scrollIntoView({block: 'start'}); await printReport(); }
   }
   async function deleteDeceased(item) {
     if (deceasedBusy || loading) return;
@@ -471,13 +479,14 @@ if (typeof document === 'undefined') {
   $('new-deceased').addEventListener('click', () => newDeceased());
   $('print-deceased-list').addEventListener('click', () => { if (deceasedBusy || loading || !visibleDeceased().length) return; switchTab('reports'); $('report-type').value = 'register-list'; prepareReport(); });
   $('preview-report').addEventListener('click', prepareReport);
-  $('print-report').addEventListener('click', async () => {
+  async function printReport() {
     if (!reportReady || reportBusy || loading || deceasedBusy) return;
     await document.fonts.ready;
     if (!reportReady || reportBusy || loading || deceasedBusy) return;
     $('print-area').replaceChildren(...[...$('report-preview').children].map(page => page.cloneNode(true)));
     window.print();
-  });
+  }
+  $('print-report').addEventListener('click', printReport);
   for (const id of ['report-type', 'report-deceased', 'report-notes']) $(id).addEventListener('change', invalidateReport);
   $('household-search').addEventListener('input', renderHouseholds);
   $('deceased-search').addEventListener('input', () => { renderDeceased(); invalidateReport(); });
