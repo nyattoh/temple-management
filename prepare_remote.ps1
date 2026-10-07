@@ -20,6 +20,6 @@ if (Test-Path -LiteralPath $config) { throw '既存のprivate/remote.jsonを保�
 @{ origin="https://${dns}:$HttpsPort"; allowed_user=$user } | ConvertTo-Json | Set-Content -LiteralPath $config -Encoding utf8
 Write-Output 'private/remote.jsonを作成しました。現在ログインしている本人だけを許可します。接続は有効化していません。'
 Write-Output '1. python app.py --remote-config private/remote.json'
-Write-Output '2. tailscale serve --bg --https=8443 http://127.0.0.1:8876'
+Write-Output '2. tailscale serve --bg --https=8443 http://127.0.0.1:8877'
 Write-Output '3. private/remote.jsonのoriginを、同じ本人の別PCから開いて確認してください。'
 Write-Output '停止は tailscale serve --https=8443 off 。既存Serveを一括resetしないでください。'

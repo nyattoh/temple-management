@@ -84,14 +84,18 @@
    python app.py --remote-config private/remote.json
    ```
 
+   同時に保存PCでは `http://127.0.0.1:8876` を使えます。VPN用の認証付き受付は別の `127.0.0.1:8877` で動きます。VPN用ポートを変える場合は `--remote-port` を指定し、以下の中継先も合わせてください。
+
 3. **Tailscale Serve の有効化**
    ```bash
-   tailscale serve --bg --https=8443 http://127.0.0.1:8876
+   tailscale serve --bg --https=8443 http://127.0.0.1:8877
    ```
 
 4. **接続と操作**
    同一利用者の別PCから、`private/remote.json` に記録された HTTPS origin のURLを開いて利用します。
    `Tailscale-User-Login` ヘッダーによる照合を行い、設定された本人以外からのアクセスや不正なOriginを自動的に遮断します。
+
+   VPN中継は必ず8877へ接続してください。ローカル用8876は、Tailscale Serveなどの転送ヘッダー付きの中継接続を拒否します。保存PC自体がローカル利用の信頼境界です。
 
 5. **遠隔中継の停止**
    ```bash

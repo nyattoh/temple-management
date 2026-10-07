@@ -97,6 +97,14 @@ class AppTests(unittest.TestCase):
         self.assertEqual(self.request('POST', '/api/households', {'name': '架空'}, Origin='https://external.test', **allowed)[0], 403)
         self.assertEqual(self.request('POST', '/api/households', {'name': '架空'}, Origin=self.server.remote['origin'], **allowed)[0], 200)
 
+    def test_local_access_rejects_proxy_headers_and_remote_hosts(self):
+        self.assertEqual(self.request('GET', '/api/state')[0], 200)
+        self.assertEqual(self.request('POST', '/api/households', {'name': '架空ローカル'}, Origin=f'http://127.0.0.1:{self.server.server_port}')[0], 200)
+        self.assertEqual(self.request('GET', '/api/state', **{'X-Forwarded-For': '192.0.2.1'})[0], 403)
+        self.assertEqual(self.request('GET', '/api/state', **{'Forwarded': 'for=192.0.2.1'})[0], 403)
+        self.assertEqual(self.request('GET', '/api/state', **{'Tailscale-User-Login': 'synthetic@example.invalid'})[0], 403)
+        self.assertEqual(self.request('GET', '/api/state', Host='example.test.ts.net:8443')[0], 403)
+
     def test_stale_update_is_rejected_without_data_loss(self):
         _, record = self.request('POST', '/api/households', {'name': '架空試験世帯'})
         path = f"/api/households/{record['id']}"

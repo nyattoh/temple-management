@@ -8,6 +8,7 @@ import postal
 import re
 from pathlib import Path
 import sqlite3
+import threading
 from urllib.parse import urlsplit
 from zipfile import BadZipFile
 
@@ -149,6 +150,8 @@ class Handler(BaseHTTPRequestHandler):
     def trusted(self):
         allowed = {f'127.0.0.1:{self.server.server_port}', f'localhost:{self.server.server_port}'}
         remote = getattr(self.server, 'remote', None)
+        if not remote and any(name.lower() == 'forwarded' or name.lower().startswith(('x-forwarded-', 'tailscale-')) for name in self.headers):
+            return False
         if remote:
             allowed.add(urlsplit(remote['origin']).netloc)
             if self.headers.get_all('Tailscale-User-Login') != [remote['allowed_user']]:
@@ -318,9 +321,12 @@ def main():
     parser.add_argument('--port', type=int, default=8876)
     parser.add_argument('--data-dir', type=Path, default=ROOT / 'data')
     parser.add_argument('--remote-config', type=Path, help='Private JSON: origin and allowed_user for Tailscale Serve')
+    parser.add_argument('--remote-port', type=int, default=8877, help='Loopback port for the authenticated VPN backend')
     args = parser.parse_args()
     remote = None
     if args.remote_config:
+        if args.port == args.remote_port:
+            parser.error('ローカル用とVPN用には異なるポートを指定してください。')
         remote = json.loads(args.remote_config.read_text(encoding='utf-8-sig'))
         origin = urlsplit(remote.get('origin', ''))
         if (origin.scheme != 'https' or not origin.hostname or not origin.hostname.endswith('.ts.net')
@@ -336,7 +342,17 @@ def main():
         print('郵便番号辞書を読み込めません。住所は手入力できます。')
     server = ThreadingHTTPServer(('127.0.0.1', args.port), Handler)
     server.db_path = db_path
-    server.remote = remote
+    server.remote = None
+    vpn_server = None
+    if remote:
+        try:
+            vpn_server = ThreadingHTTPServer(('127.0.0.1', args.remote_port), Handler)
+        except OSError:
+            server.server_close()
+            raise
+        vpn_server.db_path = db_path
+        vpn_server.remote = remote
+        threading.Thread(target=vpn_server.serve_forever, daemon=True).start()
     print(f'檀家管理: http://127.0.0.1:{server.server_port}  終了: Ctrl+C')
     try:
         server.serve_forever()
@@ -344,6 +360,9 @@ def main():
         pass
     finally:
         server.server_close()
+        if vpn_server:
+            vpn_server.shutdown()
+            vpn_server.server_close()
 
 
 if __name__ == '__main__':
